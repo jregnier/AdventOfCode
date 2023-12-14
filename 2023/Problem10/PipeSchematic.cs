@@ -1,149 +1,161 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Reflection.Metadata;
+
+using MathNet.Spatial.Euclidean;
 
 namespace Problem10;
 
-enum PipeDirection
-{
-    NS,
-    EW,
-    NE,
-    NW,
-    SW,
-    SE,
-    Ground,
-    Start,
-}
-
 internal class PipeSchematic
 {
-    private readonly static Dictionary<char, PipeDirection> _pipeMap = new()
+    public Pipe[,] Map { get; init; } = new Pipe[0, 0];
+
+    public Pipe? Start { get; init; }
+
+    public long SolvePart1() => GetPath().Count / 2;
+
+    private List<Pipe> GetPath()
     {
-        { '|', PipeDirection.NS },
-        { '-', PipeDirection.EW },
-        { 'L', PipeDirection.NE },
-        { 'J', PipeDirection.NW },
-        { '7', PipeDirection.SW },
-        { 'F', PipeDirection.SE },
-        { '.', PipeDirection.Ground },
-        { 'S', PipeDirection.Start },
-    };
+        if (Start == null)
+        {
+            return [];
+        }
 
-    public Dictionary<string, PipeDirection> PipeMatrix { get; init; } = [];
+        var seenList = new HashSet<Pipe>
+        {
+            Start,
+        };
 
-    private static string GetMatrixLookupString(int x, int y) => $"{x}_{y}";
+        var pipeQueue = new Queue<Pipe>();
+        pipeQueue.Enqueue(Start);
 
-    private static (int X, int Y) GetCoordinates(string lookupString)
-    {
-        var values = lookupString.Split("_", StringSplitOptions.RemoveEmptyEntries)
-            .Select(int.Parse)
-            .ToList();
+        while (pipeQueue.Count > 0)
+        {
+            var pipe = pipeQueue.Dequeue();
 
-        return (values[0], values[1]);
+            GetPossiblePipes(pipe)
+                .Where(pipe => !seenList.Contains(pipe))
+                .ToList()
+                .ForEach(pipe =>
+                {
+                    seenList.Add(pipe);
+                    pipeQueue.Enqueue(pipe);
+                });
+        }
+
+        return [.. seenList];
     }
 
-    public string StartingPoint { get; init; } = string.Empty;
-
-    public long FindNumberOfSteps()
+    public long SolvePart2()
     {
-        var validPaths = GetValidPaths(StartingPoint);
-        long counter = 1;
+        // I need to make the path in sequence since it's using the flood approach.
+        var paths = GetPath();
+        var pathHashSet = paths.ToHashSet();
+        var evens = paths.Where((_, i) => i % 2 == 0);
+        var odds = paths.Where((_, i) => i % 2 != 0);
 
-        foreach (var validPath in validPaths)
+        var orderedPath = evens.Union(odds.Reverse());
+        var corners = orderedPath
+            .Where(pipe => "SLJ7F".Contains(pipe.Symbol))
+            .ToList();
+
+        var points = corners.ConvertAll(pipe => new Point2D(pipe.X, pipe.Y));
+        var polygon = new Polygon2D(points);
+
+        var counter = 0;
+
+        foreach (var pipe in Map.Cast<Pipe>().ToList())
         {
-
+            var point = new Point2D(pipe.X, pipe.Y);
+            if (!pathHashSet.Contains(pipe)
+                && polygon.EnclosesPoint(point))
+            {
+                counter++;
+            }
         }
 
-        return 1;
+        return counter;
     }
 
-    private List<(PipeDirection Direction, string Key)> GetValidPaths(string key)
+    private List<Pipe> GetPossiblePipes(Pipe pipe)
     {
-        var (X, Y) = GetCoordinates(key);
+        var result = new List<Pipe>();
 
-        var leftAndRight = Enumerable.Range(X - 1, 3)
-            .Select(columnIndex => GetMatrixLookupString(columnIndex, Y))
-            .Where(lookupString => lookupString != key && PipeMatrix.ContainsKey(lookupString))
-            .Select(lookupString => (Direction: PipeMatrix[lookupString], Key: lookupString))
-            .ToList();
-
-        var left = leftAndRight[0];
-        var right = leftAndRight[1];
-
-        if (left.Direction != PipeDirection.EW
-            && left.Direction != PipeDirection.NW
-            && left.Direction != PipeDirection.SW)
+        if (pipe.Y > 0
+            && pipe.CanUp)
         {
-            leftAndRight.Remove(left);
+            var above = Map[pipe.X, pipe.Y - 1];
+            if (above.CanDown && !above.IsStart)
+            {
+                result.Add(above);
+            }
         }
 
-        if (right.Direction != PipeDirection.EW
-            && right.Direction != PipeDirection.NE
-            && right.Direction != PipeDirection.SE)
+        if (pipe.Y < Map.GetLength(1) - 1
+            && pipe.CanDown)
         {
-            leftAndRight.Remove(right);
+            var below = Map[pipe.X, pipe.Y + 1];
+            if (below.CanUp && !below.IsStart)
+            {
+                result.Add(below);
+            }
         }
 
-        var aboveBelow = Enumerable.Range(Y - 1, 3)
-            .Select(rowIndex => GetMatrixLookupString(Y, rowIndex))
-            .Where(lookupString => lookupString != key && PipeMatrix.ContainsKey(lookupString))
-            .Select(lookupString => (Direction: PipeMatrix[lookupString], Key: lookupString))
-            .ToList();
-
-        var above = aboveBelow[0];
-        var below = aboveBelow[1];
-
-        if (above.Direction != PipeDirection.NS
-            && above.Direction != PipeDirection.NW
-            && above.Direction != PipeDirection.NE)
+        if (pipe.X > 0
+            && pipe.CanLeft)
         {
-            aboveBelow.Remove(above);
+            var left = Map[pipe.X - 1, pipe.Y];
+            if (left.CanRight && !left.IsStart)
+            {
+                result.Add(left);
+            }
         }
 
-        if (below.Direction != PipeDirection.NS
-            && below.Direction != PipeDirection.SW
-            && below.Direction != PipeDirection.SE)
+        if (pipe.X < Map.GetLength(0) - 1
+            && pipe.CanRight)
         {
-            aboveBelow.Remove(below);
+            var right = Map[pipe.X + 1, pipe.Y];
+            if (right.CanLeft && !right.IsStart)
+            {
+                result.Add(right);
+            }
         }
 
-        return leftAndRight.Union(aboveBelow)
-            .Where(x => x.Direction != PipeDirection.Ground)
-            .ToList();
+        return result;
     }
 
     public static PipeSchematic Parse(string input)
     {
         var inputLines = input.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).ToList();
 
-        var matrix = new Dictionary<string, PipeDirection>();
+        var map = new Pipe[inputLines[0].Length, inputLines.Count];
 
-        var start = string.Empty;
+        Pipe? startPipe = null;
 
         foreach (var line in inputLines.Select((x, i) => new { Line = x, Index = i }))
         {
             foreach (var column in line.Line
                 .ToCharArray()
-                .Select((x, i) => new { Direction = _pipeMap[x], Index = i }))
+                .Select((x, i) => new { Symbol = x, Index = i }))
             {
-                var lookupString = GetMatrixLookupString(column.Index, line.Index);
-
-                if (column.Direction == PipeDirection.Start)
+                var pipe = new Pipe
                 {
-                    start = lookupString;
+                    X = column.Index,
+                    Y = line.Index,
+                    Symbol = column.Symbol,
+                };
+
+                if (pipe.IsStart)
+                {
+                    startPipe = pipe;
                 }
 
-                matrix.Add(lookupString, column.Direction);
+                map[column.Index, line.Index] = pipe;
             }
         }
 
         return new PipeSchematic
         {
-            PipeMatrix = matrix,
-            StartingPoint = start,
+            Map = map,
+            Start = startPipe,
         };
     }
 }

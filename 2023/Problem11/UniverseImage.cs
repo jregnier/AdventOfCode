@@ -1,80 +1,98 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Drawing;
+
+using AocUtilities;
+
 using MathNet.Numerics;
-using MathNet.Numerics.LinearAlgebra;
-using MathNet.Numerics.LinearAlgebra.Complex;
 
 namespace Problem11;
 
 internal class UniverseImage
 {
-    public List<Point> Galaxies { get; init; } = [];
-
     public List<List<char>> Map { get; init; } = [];
+
+    public static UniverseImage Parse(string inputFile)
+    {
+        var map = InputReader.GetMapAsChar(inputFile);
+
+        return new UniverseImage
+        {
+            Map = map,
+        };
+    }
 
     public long SolvePart1()
     {
+        ExpandGalaxy(1);
+        var galaxies = GetGalaxies(Map);
+
         double sum = 0;
 
-        for (int i = 0; i < Galaxies.Count; i++)
+        for (int i = 0; i < galaxies.Count; i++)
         {
-            for (int j = i + 1; j < Galaxies.Count; j++)
+            for (int j = i + 1; j < galaxies.Count; j++)
             {
-                var from = Galaxies[i];
-                var to = Galaxies[j];
+                var from = galaxies[i];
+                var to = galaxies[j];
 
-                sum += Distance.Manhattan(new double[] { from.X, from.Y }, [to.X, to.Y]);
+                var fromCoord = new double[] { from.X, from.Y };
+                var toCoord = new double[] { to.X, to.Y };
+
+                var distance = Distance.Manhattan(fromCoord, toCoord);
+                //PrintDistance(fromCoord, toCoord, distance);
+                sum += distance;
             }
         }
 
         return (long)sum;
     }
 
-    public static UniverseImage Parse(string input)
+    public long SolvePart2()
     {
-        var map = input.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
-            .Select(line => line.ToCharArray().ToList())
-            .ToList();
+        const double EXPAND_AMOUNT = 1000000;
 
-        // Expand rows
-        for (int row = map.Count - 1; row >= 0; row--)
+        var (emptyRows, emptyColumns) = GetEmptyRowsAndColumns();
+        var galaxies = GetGalaxies(Map);
+
+        double sum = 0;
+
+        for (int i = 0; i < galaxies.Count; i++)
         {
-            var rowItems = new List<char>();
-
-            for (int col = 0; col < map[row].Count; col++)
+            for (int j = i + 1; j < galaxies.Count; j++)
             {
-                rowItems.Add(map[row][col]);
-            }
+                var from = galaxies[i];
+                var to = galaxies[j];
 
-            if (rowItems.All(x => x == '.'))
-            {
-                map.Insert(row + 1, rowItems);
+                var fromCoord = new double[] { from.X, from.Y };
+                var toCoord = new double[] { to.X, to.Y };
+
+                //Console.Write("Original ");
+                //PrintDistance(fromCoord, toCoord);
+
+                fromCoord[0] = GetExpansionValue(emptyColumns, fromCoord[0], EXPAND_AMOUNT);
+                toCoord[0] = GetExpansionValue(emptyColumns, toCoord[0], EXPAND_AMOUNT);
+                fromCoord[1] = GetExpansionValue(emptyRows, fromCoord[1], EXPAND_AMOUNT);
+                toCoord[1] = GetExpansionValue(emptyRows, toCoord[1], EXPAND_AMOUNT);
+
+                var distance = Distance.Manhattan(fromCoord, toCoord);
+
+                //Console.Write("Expanded ");
+                //PrintDistance(fromCoord, toCoord, distance);
+
+                sum += distance;
             }
         }
 
-        // Expand columns
-        for (int col = map[0].Count - 1; col >= 0; col--)
-        {
-            var colItems = new List<char>();
+        return (long)sum;
+    }
 
-            for (int row = 0; row < map.Count; row++)
-            {
-                colItems.Add(map[row][col]);
-            }
+    private static double GetExpansionValue(List<long> emptyList, double coordinate, double expandAmount)
+    {
+        var count = emptyList.Count(x => x < coordinate);
+        return (coordinate - count) + (count * expandAmount);
+    }
 
-            if (colItems.All(x => x == '.'))
-            {
-                for (int row = 0; row < map.Count; row++)
-                {
-                    map[row].Insert(col + 1, '.');
-                }
-            }
-        }
-
+    private static List<Point> GetGalaxies(List<List<char>> map)
+    {
         var galaxies = new List<Point>();
         for (int row = 0; row < map.Count; row++)
         {
@@ -87,11 +105,19 @@ internal class UniverseImage
             }
         }
 
-        return new UniverseImage
+        return galaxies;
+    }
+
+    private static void PrintDistance(double[] from, double[] to, double? distance = null)
+    {
+        Console.Write($"From: ({from[0]}, {from[1]}) To: ({to[0]}, {to[1]})");
+
+        if (distance != null)
         {
-            Map = map,
-            Galaxies = galaxies,
-        };
+            Console.Write($" Distance: {distance}");
+        }
+
+        Console.WriteLine();
     }
 
     private static void PrintMap(List<List<char>> map)
@@ -105,5 +131,86 @@ internal class UniverseImage
 
             Console.WriteLine();
         }
+    }
+
+    private void ExpandGalaxy(int number)
+    {
+        // Expand columns
+        for (int col = Map[0].Count - 1; col >= 0; col--)
+        {
+            var colItems = new List<char>();
+
+            for (int row = 0; row < Map.Count; row++)
+            {
+                colItems.Add(Map[row][col]);
+            }
+
+            if (colItems.All(x => x == '.'))
+            {
+                for (int row = 0; row < Map.Count; row++)
+                {
+                    Enumerable.Range(0, number)
+                    .ToList()
+                    .ForEach(_ => Map[row].Insert(col + 1, '.'));
+                }
+            }
+        }
+
+        // Expand rows
+        for (int row = Map.Count - 1; row >= 0; row--)
+        {
+            var rowItems = new List<char>();
+
+            for (int col = 0; col < Map[row].Count; col++)
+            {
+                rowItems.Add(Map[row][col]);
+            }
+
+            if (rowItems.All(x => x == '.'))
+            {
+                Enumerable.Range(0, number)
+                .ToList()
+                .ForEach(x => Map.Insert(row + 1, rowItems));
+            }
+        }
+    }
+
+    private (List<long> Rows, List<long> Columns) GetEmptyRowsAndColumns()
+    {
+        var rows = new List<long>();
+        var columns = new List<long>();
+
+        for (int row = 0; row <= Map.Count - 1; row++)
+        {
+            var rowItems = new List<char>();
+
+            for (int col = 0; col < Map[row].Count; col++)
+            {
+                rowItems.Add(Map[row][col]);
+            }
+
+            if (rowItems.All(x => x == '.'))
+            {
+                rows.Add(row);
+            }
+        }
+
+        // Expand columns
+        for (int col = Map[0].Count - 1; col >= 0; col--)
+        {
+            var colItems = new List<char>();
+
+            for (int row = 0; row < Map.Count; row++)
+            {
+                colItems.Add(Map[row][col]);
+            }
+
+            if (colItems.All(x => x == '.'))
+            {
+                columns.Add(col);
+            }
+        }
+
+        return (rows, columns);
     }
 }

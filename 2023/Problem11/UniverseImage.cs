@@ -12,7 +12,7 @@ internal class UniverseImage
 
     public static UniverseImage Parse(string inputFile)
     {
-        var map = InputReader.GetMapAsChar(inputFile);
+        var map = InputReader.GetMapAsList(inputFile);
 
         return new UniverseImage
         {
@@ -38,7 +38,6 @@ internal class UniverseImage
                 var toCoord = new double[] { to.X, to.Y };
 
                 var distance = Distance.Manhattan(fromCoord, toCoord);
-                //PrintDistance(fromCoord, toCoord, distance);
                 sum += distance;
             }
         }

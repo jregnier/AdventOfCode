@@ -9,6 +9,19 @@ public static class Runner
 
         action();
 
+
+        Console.WriteLine($"Time: {DateTime.Now - startTime}");
+        Console.WriteLine();
+    }
+
+    public static void RunCodeWithTimer(int part, Func<object> action)
+    {
+        Console.WriteLine($"Part {part}!!");
+        var startTime = DateTime.Now;
+
+        var result = action();
+
+        Console.WriteLine($"Result: {result}");
         Console.WriteLine($"Time: {DateTime.Now - startTime}");
         Console.WriteLine();
     }

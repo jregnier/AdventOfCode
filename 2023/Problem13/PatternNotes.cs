@@ -153,10 +153,6 @@ internal class PatternNotes
                 leftItems = leftItems[..min];
                 rightItems = rightItems[..min];
 
-                //var acceptableDifference = smudgeFound
-                //    ? Enumerable.Range(0, min).All(index => GetDifference(leftItems[index], rightItems[index]) == 0)
-                //    : Enumerable.Range(0, min).Sum(index => GetDifference(leftItems[index], rightItems[index])) == 1;
-
                 if (Enumerable.Range(0, min).Sum(index => GetDifference(leftItems[index], rightItems[index])) == 1)
                 {
                     result = (leftIndex, rightIndex, true);
@@ -186,10 +182,6 @@ internal class PatternNotes
                 var min = Math.Min(bottomItems.Count, topItems.Count);
                 bottomItems = bottomItems[..min];
                 topItems = topItems[..min];
-
-                //var acceptableDifference = smudgeFound
-                //    ? Enumerable.Range(0, min).All(index => GetDifference(bottomItems[index], topItems[index]) == 0)
-                //    : Enumerable.Range(0, min).Sum(index => GetDifference(bottomItems[index], topItems[index])) == 1;
 
                 if (Enumerable.Range(0, min).Sum(index => GetDifference(bottomItems[index], topItems[index])) == 1)
                 {

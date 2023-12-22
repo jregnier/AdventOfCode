@@ -4,7 +4,14 @@ using Problem14;
 
 var inputFile = InputReader.GetInputArg();
 
-var input = RocksInput.Parse(inputFile);
+Runner.RunCodeWithTimer(1, () =>
+{
+    var input = RocksInput.Parse(inputFile);
+    return input.SolvePart1();
+});
 
-Runner.RunCodeWithTimer(1, () => input.SolvePart1());
-Runner.RunCodeWithTimer(2, () => input.SolvePart2());
+Runner.RunCodeWithTimer(2, () =>
+{
+    var input = RocksInput.Parse(inputFile);
+    return input.SolvePart2();
+});

@@ -2,23 +2,101 @@
 
 namespace Problem14;
 
-internal class RocksInput
+internal class RocksInput(char[][] map)
 {
-    public Rock[][] RocksMap { get; init; } = [];
+    public char[][] Map { get; init; } = map;
 
     public long SolvePart1()
     {
-        TiltNorth();
-        //PrintMap();
+        TiltNorth(Map);
 
-        long counter = 0;
-        for (int row = 0; row < RocksMap.Length; row++)
+        return GetNorthLoad(Map);
+    }
+
+    public long SolvePart2()
+    {
+        long result = 0;
+        var gridCache = new HashSet<int>();
+        var loads = new List<(int HashCode, long Load)>();
+
+        var map = SpinCycle(Map);
+
+        for (int i = 1; i <= 100000; i++)
         {
-            for (int col = 0; col < RocksMap[row].Length; col++)
+            var hashCode = GetGridHashCode(map);
+            if (gridCache.Contains(hashCode))
             {
-                if (RocksMap[row][col].RockType == RockType.Rounded)
+                var loadIndex = loads.FindIndex(f => f.HashCode == hashCode) + 1;
+                var loop = i - loadIndex;
+                var index = loadIndex + ((1000000000 - loadIndex - 1) % loop);
+                result = loads[index].Load;
+                break;
+            }
+
+            var load = GetNorthLoad(map);
+            gridCache.Add(hashCode);
+            loads.Add((hashCode, load));
+            map = SpinCycle(map);
+        }
+
+        return result;
+    }
+
+    private static int GetGridHashCode(char[][] map)
+    {
+        var hash = 0;
+        for (int i = 0; i < map.Length; i++)
+        {
+            for (int j = 0; j < map[0].Length; j++)
+            {
+                hash = HashCode.Combine(hash, map[i][j]);
+            }
+        }
+
+        return hash;
+    }
+
+    private static char[][] SpinCycle(char[][] map)
+    {
+        TiltNorth(map);
+
+        var newMap = Rotate90(map);
+        TiltNorth(newMap);
+
+        newMap = Rotate90(newMap);
+        TiltNorth(newMap);
+
+        newMap = Rotate90(newMap);
+        TiltNorth(newMap);
+
+        return Rotate90(newMap);
+    }
+
+    private static void PrintMap(char[][] map)
+    {
+        for (int row = 0; row < map.Length; row++)
+        {
+            for (int col = 0; col < map[row].Length; col++)
+            {
+                Console.Write(map[row][col]);
+            }
+
+            Console.WriteLine();
+        }
+
+        Console.WriteLine();
+    }
+
+    private static long GetNorthLoad(char[][] map)
+    {
+        long counter = 0;
+        for (int row = 0; row < map.Length; row++)
+        {
+            for (int col = 0; col < map[row].Length; col++)
+            {
+                if (map[row][col] == 'O')
                 {
-                    counter += RocksMap.Length - row;
+                    counter += map.Length - row;
                 }
             }
         }
@@ -26,31 +104,26 @@ internal class RocksInput
         return counter;
     }
 
-    public long SolvePart2()
+    private static void TiltNorth(char[][] chars)
     {
-        return 1;
-    }
-
-    private void TiltNorth()
-    {
-        for (int row = 1; row < RocksMap.Length; row++)
+        for (int row = 1; row < chars.Length; row++)
         {
-            for (int col = 0; col < RocksMap[row].Length; col++)
+            for (int col = 0; col < chars[row].Length; col++)
             {
-                if (RocksMap[row][col].RockType == RockType.Rounded)
+                if (chars[row][col] == 'O')
                 {
-                    for(int northRow = row - 1; northRow >= 0; northRow--)
+                    for (int northRow = row - 1; northRow >= 0; northRow--)
                     {
-                        if (RocksMap[northRow][col].RockType != RockType.Empty)
+                        if (chars[northRow][col] != '.')
                         {
                             break;
                         }
 
                         if (northRow == 0
-                            || RocksMap[northRow - 1][col].RockType != RockType.Empty)
+                            || chars[northRow - 1][col] != '.')
                         {
-                            RocksMap[northRow][col] = RocksMap[row][col];
-                            RocksMap[row][col] = new Rock(RockType.Empty);
+                            chars[northRow][col] = chars[row][col];
+                            chars[row][col] = '.';
                         }
                     }
                 }
@@ -58,54 +131,25 @@ internal class RocksInput
         }
     }
 
-    private void PrintMap()
+    private static char[][] Rotate90(char[][] map)
     {
-        for (int row = 0; row < RocksMap.Length; row++)
-        {
-            for (int col = 0; col < RocksMap[row].Length; col++)
-            {
-                Console.Write(GetChar(RocksMap[row][col].RockType));
-            }
+        var newMap = new char[map[0].Length][];
 
-            Console.WriteLine();
+        for (int row = 0; row < map[0].Length; row++)
+        {
+            newMap[row] = new char[map[0].Length];
+            for (int col = 0; col < map.Length; col++)
+            {
+                newMap[row][col] = map[map.Length - col -1][row];
+            }
         }
+
+        return newMap;
     }
 
     public static RocksInput Parse(string inputFile)
     {
         var map = InputReader.GetMapAs2DArray(inputFile);
-
-        var rocksMap = new Rock[map.Length][];
-
-        for (int i = 0; i < map.Length; i++)
-        {
-            rocksMap[i] = new Rock[map[i].Length];
-
-            for (int j = 0; j < map[i].Length; j++)
-            {
-                rocksMap[i][j] = new Rock(GetRockType(map[i][j]));
-            }
-        }
-
-        return new RocksInput
-        {
-            RocksMap = rocksMap,
-        };
+        return new RocksInput(map);
     }
-
-    private static RockType GetRockType(char c) => c switch
-        {
-            'O' => RockType.Rounded,
-            '#' => RockType.Cubed,
-            '.' => RockType.Empty,
-            _ => throw new Exception("Unknown rock type"),
-        };
-
-    private static char GetChar(RockType rockType) => rockType switch
-    {
-            RockType.Rounded => 'O',
-            RockType.Cubed => '#',
-            RockType.Empty => '.',
-            _ => throw new Exception("Unknown rock type"),
-        };
 }

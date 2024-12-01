@@ -22,7 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\AocUtilities\AocUtilities.csproj" />
+    <ProjectReference Include="..\..\AocUtilities\AocUtilities.csproj" />
   </ItemGroup>
 
 </Project>
